@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	database "github.com/donnigundala/dgcore-database"
+	database "github.com/donnigundala/dg-database"
 	"gorm.io/gorm"
 )
 
@@ -16,7 +16,7 @@ type Product struct {
 }
 
 func main() {
-	fmt.Println("=== Read/Write Splitting Example ===\n")
+	fmt.Println("=== Read/Write Splitting Example ===")
 
 	// Configure read/write splitting
 	config := database.Config{

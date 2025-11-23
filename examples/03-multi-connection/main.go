@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	database "github.com/donnigundala/dgcore-database"
+	database "github.com/donnigundala/dg-database"
 )
 
 // Order model
@@ -29,7 +29,7 @@ type Log struct {
 }
 
 func main() {
-	fmt.Println("=== Multi-Connection Example ===\n")
+	fmt.Println("=== Multi-Connection Example ===")
 
 	// Configure multiple named connections
 	config := database.Config{

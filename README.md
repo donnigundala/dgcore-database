@@ -24,7 +24,7 @@ A powerful, production-ready database plugin for the DG Framework with support f
 ## Installation
 
 ```bash
-go get github.com/donnigundala/dgcore-database
+go get github.com/donnigundala/dg-database
 ```
 
 ## Quick Start
@@ -35,8 +35,11 @@ go get github.com/donnigundala/dgcore-database
 package main
 
 import (
-    "github.com/donnigundala/dgcore-database"
-    "github.com/donnigundala/dgcore/foundation"
+    "fmt"
+    "log"
+    
+    database "github.com/donnigundala/dg-database"
+    "github.com/donnigundala/dg-core/foundation"
 )
 
 func main() {
@@ -458,9 +461,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-- **Documentation**: [Full documentation](https://github.com/donnigundala/dgcore-database)
-- **Issues**: [GitHub Issues](https://github.com/donnigundala/dgcore-database/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/donnigundala/dgcore-database/discussions)
+- **Documentation**: [Full documentation](https://github.com/donnigundala/dg-database)
+- **Issues**: [GitHub Issues](https://github.com/donnigundala/dg-database/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/donnigundala/dg-database/discussions)
 
 ## Changelog
 

@@ -19,7 +19,7 @@ go get -u github.com/golang-migrate/migrate/v4/source/file
 
 ```go
 import (
-    "github.com/donnigundala/dgcore-database"
+    "github.com/donnigundala/dg-database"
     "github.com/golang-migrate/migrate/v4"
     "github.com/golang-migrate/migrate/v4/database/postgres"
     _ "github.com/golang-migrate/migrate/v4/source/file"
@@ -110,7 +110,7 @@ package main
 import (
     "log"
     
-    "github.com/donnigundala/dgcore-database"
+    "github.com/donnigundala/dg-database"
     "github.com/golang-migrate/migrate/v4"
     "github.com/golang-migrate/migrate/v4/database/postgres"
     _ "github.com/golang-migrate/migrate/v4/source/file"

@@ -136,7 +136,7 @@ package main
 
 import (
     "log"
-    "github.com/donnigundala/dgcore-database"
+    "github.com/donnigundala/dg-database"
 )
 
 func main() {

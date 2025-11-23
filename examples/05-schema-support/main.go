@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	database "github.com/donnigundala/dgcore-database"
+	database "github.com/donnigundala/dg-database"
 )
 
 // User model

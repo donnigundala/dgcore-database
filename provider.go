@@ -3,7 +3,7 @@ package database
 import (
 	"fmt"
 
-	"github.com/donnigundala/dgcore/contracts/foundation"
+	"github.com/donnigundala/dg-core/contracts/foundation"
 )
 
 // ServiceProvider is the database service provider

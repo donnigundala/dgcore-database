@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	database "github.com/donnigundala/dgcore-database"
+	database "github.com/donnigundala/dg-database"
 	"gorm.io/gorm"
 )
 
@@ -16,7 +16,7 @@ type User struct {
 }
 
 func main() {
-	fmt.Println("=== Basic Single Connection Example ===\n")
+	fmt.Println("=== Basic Single Connection Example ===")
 
 	// Create configuration
 	config := database.DefaultConfig().

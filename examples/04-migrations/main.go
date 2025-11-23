@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	database "github.com/donnigundala/dgcore-database"
+	database "github.com/donnigundala/dg-database"
 	"gorm.io/gorm"
 )
 
@@ -16,7 +16,7 @@ type User struct {
 }
 
 func main() {
-	fmt.Println("=== Migration Example ===\n")
+	fmt.Println("=== Migration Example ===")
 
 	config := database.Config{
 		Driver:   "sqlite",
@@ -64,7 +64,7 @@ func main() {
 	if err := manager.Migrate(migrations); err != nil {
 		log.Fatalf("Migration failed: %v", err)
 	}
-	fmt.Println("✅ Migrations completed\n")
+	fmt.Println("✅ Migrations completed")
 
 	// Check migration status
 	fmt.Println("=== Migration Status ===")

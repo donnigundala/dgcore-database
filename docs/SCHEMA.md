@@ -402,7 +402,7 @@ package main
 
 import (
     "fmt"
-    "github.com/donnigundala/dgcore-database"
+    "github.com/donnigundala/dg-database"
 )
 
 func main() {
