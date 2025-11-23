@@ -4,18 +4,59 @@ This guide covers database migrations in dgcore-database.
 
 ## Table of Contents
 - [Overview](#overview)
-- [Creating Migrations](#creating-migrations)
-- [Running Migrations](#running-migrations)
-- [Rolling Back](#rolling-back)
-- [Migration Status](#migration-status)
+- [Migration Approaches](#migration-approaches)
+- [Built-in Migrations](#built-in-migrations)
+- [go-migrate Integration](#go-migrate-integration)
+- [Choosing an Approach](#choosing-an-approach)
 - [Best Practices](#best-practices)
 
 ## Overview
 
-Migrations allow you to version control your database schema changes. Each migration has:
-- **ID**: Unique identifier (e.g., "001_create_users")
-- **Up**: Function to apply the migration
-- **Down**: Function to revert the migration
+The `dgcore-database` plugin supports two migration approaches:
+
+1. **Built-in Migration System** - Simple, Go-based migrations integrated with GORM
+2. **go-migrate Integration** - Industry-standard migration tool with CLI support
+
+Both approaches can be used depending on your needs.
+
+## Migration Approaches
+
+### Built-in Migrations
+
+**Best for:**
+- Simple applications
+- GORM-heavy projects
+- Quick prototyping
+- Embedded applications
+- Type-safe migrations
+
+**Features:**
+- ✅ Pure Go migrations
+- ✅ GORM integration
+- ✅ No external dependencies
+- ✅ Simple API
+- ❌ No CLI tool
+- ❌ No SQL file support
+
+### go-migrate
+
+**Best for:**
+- Production applications
+- Team environments
+- CI/CD pipelines
+- SQL-heavy migrations
+- Complex migration workflows
+
+**Features:**
+- ✅ CLI tool
+- ✅ SQL file support
+- ✅ Version-based migrations
+- ✅ Multiple database drivers
+- ✅ Rich feature set
+- ❌ External dependency
+- ❌ Requires SQL knowledge
+
+## Built-in Migrations
 
 ## Creating Migrations
 

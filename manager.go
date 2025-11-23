@@ -1,6 +1,7 @@
 package database
 
 import (
+	"database/sql"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -358,6 +359,23 @@ func (m *Manager) HealthCheck() map[string]bool {
 
 	return health
 }
+
+// ========== go-migrate Integration Helpers ==========
+
+// SQL returns the underlying *sql.DB for the primary connection.
+// This is useful for integrating with tools like go-migrate that require *sql.DB.
+func (m *Manager) SQL() (*sql.DB, error) {
+	return m.master.DB()
+}
+
+// SQLConnection returns the underlying *sql.DB for a named connection.
+// This is useful for running migrations on specific connections.
+func (m *Manager) SQLConnection(name string) (*sql.DB, error) {
+	conn := m.Connection(name)
+	return conn.DB()
+}
+
+// ========== Internal Helpers ==========
 
 func (m *Manager) ping(db *gorm.DB) error {
 	sqlDB, err := db.DB()
