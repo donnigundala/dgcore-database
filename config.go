@@ -28,6 +28,7 @@ type Config struct {
 	Timezone  string
 	ParseTime bool
 	SSLMode   string
+	Schema    string // PostgreSQL schema (default: public), MySQL: not used
 
 	// Logging
 	LogLevel      string // silent, error, warn, info
@@ -83,6 +84,7 @@ type ConnectionConfig struct {
 	Timezone  string
 	ParseTime bool
 	SSLMode   string
+	Schema    string // PostgreSQL schema (default: public)
 }
 
 // DefaultConfig returns the default configuration
@@ -187,5 +189,18 @@ func (c Config) WithConnection(name string, config ConnectionConfig) Config {
 // WithDefaultConnection sets the default connection name
 func (c Config) WithDefaultConnection(name string) Config {
 	c.DefaultConnection = name
+	return c
+}
+
+// WithSchema sets the database schema (PostgreSQL)
+func (c Config) WithSchema(schema string) Config {
+	c.Schema = schema
+	return c
+}
+
+// WithMaxConnections sets the connection pool limits
+func (c Config) WithMaxConnections(maxOpen, maxIdle int) Config {
+	c.MaxOpenConns = maxOpen
+	c.MaxIdleConns = maxIdle
 	return c
 }

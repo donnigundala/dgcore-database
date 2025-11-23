@@ -177,6 +177,54 @@ config := database.DefaultConfig().
     WithAutoRouting(true)
 ```
 
+### PostgreSQL Schema Support
+
+```go
+// Use custom schema
+config := database.DefaultConfig().
+    WithDriver("postgres").
+    WithDatabase("myapp").
+    WithSchema("tenant_1") // All operations use tenant_1 schema
+
+// Multi-tenant with schemas
+config := database.Config{
+    Driver:   "postgres",
+    Database: "myapp",
+    Schema:   "public", // Default schema
+    
+    Connections: map[string]database.ConnectionConfig{
+        "tenant_1": {
+            Driver:   "postgres",
+            Database: "myapp",
+            Schema:   "tenant_1", // Tenant 1 schema
+        },
+        "tenant_2": {
+            Driver:   "postgres",
+            Database: "myapp",
+            Schema:   "tenant_2", // Tenant 2 schema
+        },
+    },
+}
+
+manager, _ := database.NewManager(config, nil)
+
+// Each tenant uses their own schema
+manager.Connection("tenant_1").Find(&users) // Uses tenant_1 schema
+manager.Connection("tenant_2").Find(&users) // Uses tenant_2 schema
+
+// Read/Write splitting with schemas
+config := database.Config{
+    ReadWriteSplitting: true,
+    Master: database.ConnectionConfig{
+        Schema: "production",
+    },
+    Slaves: []database.ConnectionConfig{
+        {Schema: "production"},
+    },
+}
+```
+
+
 ## Features Guide
 
 ### Transactions
@@ -278,6 +326,8 @@ config.WithSlaveStrategy("weighted")
 ## Use Cases
 
 ### Multi-Tenancy
+
+**Option 1: Separate Databases**
 ```go
 // Add tenant database at runtime
 tenantConfig := database.ConnectionConfig{
@@ -290,6 +340,28 @@ manager.AddConnection("tenant_1", tenantConfig)
 // Use tenant database
 manager.Connection("tenant_1").Find(&users)
 ```
+
+**Option 2: PostgreSQL Schemas (Recommended)**
+```go
+// Each tenant in separate schema, same database
+config := database.Config{
+    Driver:   "postgres",
+    Database: "myapp",
+    
+    Connections: map[string]database.ConnectionConfig{
+        "tenant_1": {Schema: "tenant_1"},
+        "tenant_2": {Schema: "tenant_2"},
+        "tenant_3": {Schema: "tenant_3"},
+    },
+}
+
+manager, _ := database.NewManager(config, nil)
+
+// Each tenant isolated by schema
+manager.Connection("tenant_1").Find(&users) // tenant_1.users
+manager.Connection("tenant_2").Find(&users) // tenant_2.users
+```
+
 
 ### Microservices
 ```go
@@ -353,6 +425,7 @@ See the [examples](./examples) directory for complete working examples:
 - [02-read-write-splitting](./examples/02-read-write-splitting) - Master/slave setup
 - [03-multi-connection](./examples/03-multi-connection) - Multiple databases
 - [04-migrations](./examples/04-migrations) - Database migrations
+- [05-schema-support](./examples/05-schema-support) - PostgreSQL schema support
 
 ## Testing
 

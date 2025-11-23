@@ -177,7 +177,7 @@ func buildPostgresDSN(config Config) string {
 		timezone = "UTC"
 	}
 
-	return fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
 		config.Host,
 		config.Username,
 		config.Password,
@@ -186,6 +186,13 @@ func buildPostgresDSN(config Config) string {
 		sslMode,
 		timezone,
 	)
+
+	// Add schema (search_path) if specified
+	if config.Schema != "" {
+		dsn += fmt.Sprintf(" search_path=%s", config.Schema)
+	}
+
+	return dsn
 }
 
 // buildPostgresDSNFromConn builds PostgreSQL DSN from ConnectionConfig.
@@ -200,7 +207,7 @@ func buildPostgresDSNFromConn(config ConnectionConfig) string {
 		timezone = "UTC"
 	}
 
-	return fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
 		config.Host,
 		config.Username,
 		config.Password,
@@ -209,6 +216,13 @@ func buildPostgresDSNFromConn(config ConnectionConfig) string {
 		sslMode,
 		timezone,
 	)
+
+	// Add schema (search_path) if specified
+	if config.Schema != "" {
+		dsn += fmt.Sprintf(" search_path=%s", config.Schema)
+	}
+
+	return dsn
 }
 
 // getLogger returns a GORM logger based on log level.

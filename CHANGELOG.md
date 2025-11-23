@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-11-24
+
+### Added
+- PostgreSQL schema support via `search_path` parameter
+- `Schema` field in `Config` and `ConnectionConfig` structs
+- `WithSchema(schema string)` fluent configuration method
+- `WithMaxConnections(maxOpen, maxIdle int)` helper method
+- Schema-based multi-tenancy support
+- 4 new tests for schema functionality
+- Example 05: Schema support demonstration
+- Comprehensive schema documentation (docs/SCHEMA.md)
+
+### Enhanced
+- PostgreSQL DSN builders now support schema parameter
+- Multi-tenant examples updated with schema usage
+- README updated with schema examples and use cases
+
+### Documentation
+- Added schema support guide (docs/SCHEMA.md)
+- Updated README with PostgreSQL schema examples
+- Added schema-based multi-tenancy patterns
+- Updated API documentation
+
+### Testing
+- Added `TestPostgresSchemaSupport`
+- Added `TestPostgresDefaultSchema`
+- Added `TestPostgresSchemaFromConnectionConfig`
+- Added `TestConfigWithSchema`
+- Total tests: 40 (all passing)
+
 ## [1.0.0] - 2025-11-23
 
 ### Added
