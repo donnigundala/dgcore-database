@@ -2,7 +2,7 @@
 
 ## go-migrate Integration
 
-The `dgcore-database` plugin provides helper methods to integrate with [go-migrate](https://github.com/golang-migrate/migrate), the industry-standard migration tool.
+The `dg-database` plugin provides helper methods to integrate with [go-migrate](https://github.com/golang-migrate/migrate), the industry-standard migration tool.
 
 ### Installation
 

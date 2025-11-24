@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2025-11-23
 
 ### Added
-- Initial release of dgcore-database plugin
+- Initial release of dg-database plugin
 - Support for MySQL, PostgreSQL, and SQLite drivers
 - Connection pooling with configurable limits
 - Read/write splitting with automatic routing
@@ -50,7 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health monitoring for all connections
 - Fluent configuration API
 - Auto-migration support
-- Service provider integration with dgcore framework
+- Service provider integration with dg-core framework
 - Comprehensive test suite (36 tests, 55.9% coverage)
 - Complete documentation and examples
 

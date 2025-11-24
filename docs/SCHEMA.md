@@ -1,10 +1,10 @@
 # PostgreSQL Schema Support Guide
 
-This guide covers PostgreSQL schema support in dgcore-database.
+This guide covers PostgreSQL schema support in dg-database.
 
 ## Overview
 
-PostgreSQL schemas provide a way to organize database objects into logical groups. The `dgcore-database` plugin supports schemas through the `search_path` parameter, allowing you to:
+PostgreSQL schemas provide a way to organize database objects into logical groups. The `dg-database` plugin supports schemas through the `search_path` parameter, allowing you to:
 
 - Use custom schemas instead of the default `public` schema
 - Implement multi-tenancy with schema isolation

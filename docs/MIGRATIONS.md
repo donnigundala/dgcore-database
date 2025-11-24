@@ -1,6 +1,6 @@
 # Migration Guide
 
-This guide covers database migrations in dgcore-database.
+This guide covers database migrations in dg-database.
 
 ## Table of Contents
 - [Overview](#overview)
@@ -12,7 +12,7 @@ This guide covers database migrations in dgcore-database.
 
 ## Overview
 
-The `dgcore-database` plugin supports two migration approaches:
+The `dg-database` plugin supports two migration approaches:
 
 1. **Built-in Migration System** - Simple, Go-based migrations integrated with GORM
 2. **go-migrate Integration** - Industry-standard migration tool with CLI support
