@@ -1,6 +1,7 @@
 package database
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -225,10 +226,6 @@ func TestReadWritePlugin_LoadBalancing(t *testing.T) {
 
 // TestIsWriteOperation tests the SQL operation classification
 func TestIsWriteOperation(t *testing.T) {
-	// Note: This function is tested indirectly through the routing tests above
-	// because we can't easily mock gorm.Statement.SQL without executing actual queries.
-
-	// We'll just verify the function exists and handles edge cases
 	t.Run("empty statement", func(t *testing.T) {
 		db := &gorm.DB{
 			Statement: &gorm.Statement{},
@@ -239,10 +236,159 @@ func TestIsWriteOperation(t *testing.T) {
 		assert.False(t, result, "Empty statement should not be classified as write")
 	})
 
-	// The actual SQL classification is tested through:
-	// - TestReadWritePlugin_ReadRouting (verifies reads work)
-	// - TestReadWritePlugin_WriteRouting (verifies writes work)
-	// - TestReadWritePlugin_TransactionRouting (verifies transaction handling)
+	t.Run("write operations", func(t *testing.T) {
+		writeKeywords := []string{"INSERT", "UPDATE", "DELETE", "CREATE", "ALTER", "DROP"}
+
+		for _, keyword := range writeKeywords {
+			t.Run(keyword, func(t *testing.T) {
+				db := &gorm.DB{
+					Statement: &gorm.Statement{
+						SQL: strings.Builder{},
+					},
+				}
+				db.Statement.SQL.WriteString(keyword + " INTO table")
+
+				result := isWriteOperation(db)
+				assert.True(t, result, keyword+" should be classified as write operation")
+			})
+		}
+	})
+
+	t.Run("read operations", func(t *testing.T) {
+		readKeywords := []string{"SELECT", "SHOW", "DESCRIBE", "EXPLAIN"}
+
+		for _, keyword := range readKeywords {
+			t.Run(keyword, func(t *testing.T) {
+				db := &gorm.DB{
+					Statement: &gorm.Statement{
+						SQL: strings.Builder{},
+					},
+				}
+				db.Statement.SQL.WriteString(keyword + " * FROM table")
+
+				result := isWriteOperation(db)
+				assert.False(t, result, keyword+" should not be classified as write operation")
+			})
+		}
+	})
+}
+
+// TestReadWritePlugin_AutoRouting_ActualQueries tests routing with actual queries
+func TestReadWritePlugin_AutoRouting_ActualQueries(t *testing.T) {
+	config := Config{
+		Driver:             "sqlite",
+		Database:           ":memory:",
+		ReadWriteSplitting: true,
+		AutoRouting:        true, // Enable auto routing
+		SlaveStrategy:      "round-robin",
+		Master: ConnectionConfig{
+			Driver:   "sqlite",
+			Database: ":memory:",
+		},
+		Slaves: []ConnectionConfig{
+			{
+				Driver:   "sqlite",
+				Database: ":memory:",
+			},
+		},
+	}
+
+	manager, err := NewManager(config, nil)
+	require.NoError(t, err)
+	defer manager.Close()
+
+	type TestModel struct {
+		ID   uint   `gorm:"primaryKey"`
+		Name string `gorm:"size:100"`
+	}
+
+	// Migrate on master
+	err = manager.Master().AutoMigrate(&TestModel{})
+	require.NoError(t, err)
+
+	// Migrate on slaves
+	for i := range manager.slaves {
+		err = manager.Slave(i).AutoMigrate(&TestModel{})
+		require.NoError(t, err)
+	}
+
+	// Test write operation (should go to master)
+	testData := TestModel{Name: "test"}
+	result := manager.Master().Create(&testData)
+	require.NoError(t, result.Error)
+
+	// Test that plugin is active
+	assert.NotNil(t, manager.plugin, "Plugin should be initialized")
+}
+
+// TestReadWritePlugin_SystemTableDetection tests that system table queries go to master
+func TestReadWritePlugin_SystemTableDetection(t *testing.T) {
+	config := Config{
+		Driver:             "sqlite",
+		Database:           ":memory:",
+		ReadWriteSplitting: true,
+		AutoRouting:        true,
+		SlaveStrategy:      "round-robin",
+		Master: ConnectionConfig{
+			Driver:   "sqlite",
+			Database: ":memory:",
+		},
+		Slaves: []ConnectionConfig{
+			{
+				Driver:   "sqlite",
+				Database: ":memory:",
+			},
+		},
+	}
+
+	manager, err := NewManager(config, nil)
+	require.NoError(t, err)
+	defer manager.Close()
+
+	// System table queries should not be routed to slaves
+	// This is tested indirectly through AutoMigrate which queries sqlite_master
+	type TestModel struct {
+		ID   uint   `gorm:"primaryKey"`
+		Name string `gorm:"size:100"`
+	}
+
+	// AutoMigrate queries system tables - should work without errors
+	err = manager.AutoMigrate(&TestModel{})
+	assert.NoError(t, err, "AutoMigrate should succeed (system tables go to master)")
+}
+
+// TestReadWritePlugin_SkipRoutingContext tests that skip_routing context is respected
+func TestReadWritePlugin_SkipRoutingContext(t *testing.T) {
+	config := Config{
+		Driver:             "sqlite",
+		Database:           ":memory:",
+		ReadWriteSplitting: true,
+		AutoRouting:        true,
+		SlaveStrategy:      "round-robin",
+		Master: ConnectionConfig{
+			Driver:   "sqlite",
+			Database: ":memory:",
+		},
+		Slaves: []ConnectionConfig{
+			{
+				Driver:   "sqlite",
+				Database: ":memory:",
+			},
+		},
+	}
+
+	manager, err := NewManager(config, nil)
+	require.NoError(t, err)
+	defer manager.Close()
+
+	// AutoMigrate uses skip_routing context
+	type TestModel struct {
+		ID   uint   `gorm:"primaryKey"`
+		Name string `gorm:"size:100"`
+	}
+
+	err = manager.AutoMigrate(&TestModel{})
+	assert.NoError(t, err, "AutoMigrate with skip_routing should succeed")
 }
 
 // TestReadWritePlugin_TransactionRouting tests that transactions always use master

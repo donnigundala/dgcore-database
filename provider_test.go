@@ -282,6 +282,131 @@ func TestServiceProvider_IntegrationWithDgCore(t *testing.T) {
 	assert.Equal(t, "test", retrieved.Name, "Name should match")
 }
 
+// TestServiceProvider_Boot_PingFailure tests boot when ping fails
+func TestServiceProvider_Boot_PingFailure(t *testing.T) {
+	app := foundation.New(".")
+
+	// Create a config that will connect but might fail ping
+	// We'll use a closed connection scenario
+	config := DefaultConfig().
+		WithDriver("sqlite").
+		WithDatabase(":memory:")
+
+	provider := NewServiceProvider(config)
+
+	err := provider.Register(app)
+	require.NoError(t, err)
+
+	// Get the manager and close it before boot
+	dbInstance, _ := app.Make("db")
+	manager := dbInstance.(*Manager)
+	manager.Close()
+
+	// Boot should fail because connection is closed
+	err = provider.Boot(app)
+	assert.Error(t, err, "Boot should fail when ping fails")
+	assert.Contains(t, err.Error(), "database connection failed", "Error should mention connection failure")
+}
+
+// TestServiceProvider_Boot_NoLogger tests boot without logger (no logging branch)
+func TestServiceProvider_Boot_NoLogger(t *testing.T) {
+	app := foundation.New(".")
+
+	config := DefaultConfig().
+		WithDriver("sqlite").
+		WithDatabase(":memory:")
+
+	provider := NewServiceProvider(config)
+
+	err := provider.Register(app)
+	require.NoError(t, err)
+
+	// Boot without logger
+	err = provider.Boot(app)
+	assert.NoError(t, err, "Boot should succeed without logger")
+}
+
+// TestServiceProvider_Boot_WithLogger_ReadWriteSplitting tests logger branch for read/write splitting
+func TestServiceProvider_Boot_WithLogger_ReadWriteSplitting(t *testing.T) {
+	app := foundation.New(".")
+
+	// Create mock logger and register it
+	logger := &mockLogger{}
+	app.Instance("logger", logger)
+
+	config := Config{
+		Driver:             "sqlite",
+		Database:           ":memory:",
+		ReadWriteSplitting: true,
+		SlaveStrategy:      "round-robin",
+		Master: ConnectionConfig{
+			Driver:   "sqlite",
+			Database: ":memory:",
+		},
+		Slaves: []ConnectionConfig{
+			{
+				Driver:   "sqlite",
+				Database: ":memory:",
+			},
+		},
+	}
+
+	provider := NewServiceProvider(config)
+
+	// Register - this will create manager with logger from config
+	// We need to modify the singleton to inject logger
+	app.Singleton("db", func() interface{} {
+		manager, err := NewManager(config, logger)
+		if err != nil {
+			panic(err)
+		}
+		return manager
+	})
+
+	err := provider.Boot(app)
+	assert.NoError(t, err, "Boot should succeed with logger and read/write splitting")
+
+	// Verify logger was used (should have logged about read/write splitting)
+	assert.NotEmpty(t, logger.logs, "Logger should have been used")
+}
+
+// TestServiceProvider_Boot_WithLogger_NamedConnections tests logger branch for named connections
+func TestServiceProvider_Boot_WithLogger_NamedConnections(t *testing.T) {
+	app := foundation.New(".")
+
+	// Create mock logger
+	logger := &mockLogger{}
+	app.Instance("logger", logger)
+
+	config := Config{
+		Driver:   "sqlite",
+		Database: ":memory:",
+		Connections: map[string]ConnectionConfig{
+			"analytics": {
+				Driver:   "sqlite",
+				Database: ":memory:",
+			},
+		},
+	}
+
+	provider := NewServiceProvider(config)
+
+	// Register - manually inject logger
+	app.Singleton("db", func() interface{} {
+		manager, err := NewManager(config, logger)
+		if err != nil {
+			panic(err)
+		}
+		return manager
+	})
+
+	err := provider.Boot(app)
+	assert.NoError(t, err, "Boot should succeed with logger and named connections")
+
+	// Verify logger was used (should have logged about named connections)
+	assert.NotEmpty(t, logger.logs, "Logger should have been used")
+}
+
 // mockLogger is a simple mock logger for testing
 type mockLogger struct {
 	logs []string
