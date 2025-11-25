@@ -1,6 +1,7 @@
 # dg-database
 
 [![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.21-blue)](https://go.dev/)
+[![Test Coverage](https://img.shields.io/badge/coverage-79.4%25-brightgreen)](https://github.com/donnigundala/dg-database)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A powerful, production-ready database plugin for the DG Framework with support for read/write splitting, multi-connection management, and comprehensive database operations.
@@ -20,6 +21,12 @@ A powerful, production-ready database plugin for the DG Framework with support f
 - **Multi-Connection**: Manage multiple named database connections
 - **Runtime Management**: Add/remove connections at runtime
 - **Fluent Configuration**: Easy-to-use configuration API
+
+### 🔍 Observability Features
+- **Connection Pool Metrics**: Monitor pool statistics (open, in-use, idle connections)
+- **Enhanced Health Checks**: Detailed health status with latency tracking
+- **Slow Query Logging**: Identify performance bottlenecks
+- **Connection Retry**: Automatic retry with exponential backoff
 
 ## Installation
 
@@ -225,8 +232,154 @@ config := database.Config{
         {Schema: "production"},
     },
 }
+
+
+## Observability
+
+### Connection Pool Metrics
+
+Monitor database connection pool statistics for performance tuning and debugging:
+
+```go
+// Get stats for primary connection
+stats := manager.Stats()
+fmt.Printf("Pool Stats:\n")
+fmt.Printf("  Open Connections: %d\n", stats.OpenConnections)
+fmt.Printf("  In Use: %d\n", stats.InUse)
+fmt.Printf("  Idle: %d\n", stats.Idle)
+fmt.Printf("  Wait Count: %d\n", stats.WaitCount)
+fmt.Printf("  Wait Duration: %v\n", stats.WaitDuration)
+
+// Get stats for all connections (including master/slaves, named connections)
+allStats := manager.AllStats()
+for name, s := range allStats {
+    fmt.Printf("%s: %d open, %d in use, %d idle\n", 
+        name, s.OpenConnections, s.InUse, s.Idle)
+}
+
+// Get stats for specific named connection
+analyticsStats := manager.ConnectionStats("analytics")
 ```
 
+### Health Monitoring
+
+Check database health with detailed status and latency tracking:
+
+```go
+// Detailed health check with status levels
+health := manager.DetailedHealthCheck()
+for name, h := range health {
+    fmt.Printf("%s:\n", name)
+    fmt.Printf("  Status: %s\n", h.Status) // healthy, degraded, unhealthy
+    fmt.Printf("  Latency: %v\n", h.Latency)
+    fmt.Printf("  Open Connections: %d\n", h.Stats.OpenConnections)
+    if h.Error != nil {
+        fmt.Printf("  Error: %v\n", h.Error)
+    }
+}
+
+// Simple health check (returns false if any connection is unhealthy)
+if !manager.IsHealthy() {
+    log.Error("Database unhealthy!")
+}
+
+// Strict health check (returns false if any connection is degraded or unhealthy)
+if !manager.IsFullyHealthy() {
+    log.Warn("Database performance degraded")
+}
+```
+
+**Health Status Levels:**
+- `healthy` - Connection is working normally (latency < 100ms)
+- `degraded` - Connection is slow but working (latency > 100ms)
+- `unhealthy` - Connection failed or unreachable
+
+### Slow Query Logging
+
+Log queries that exceed a configurable threshold for performance debugging:
+
+```go
+// Enable slow query logging
+config := database.DefaultConfig().
+    WithDriver("postgres").
+    WithSlowQueryLogging(200 * time.Millisecond) // Log queries > 200ms
+
+manager, _ := database.NewManager(config, logger)
+
+// With stack traces (for debugging)
+config := database.DefaultConfig().
+    WithSlowQueryLoggingAndStack(200 * time.Millisecond)
+```
+
+Slow queries will be logged with details:
+```
+[WARN] Slow query detected
+  duration: 350ms
+  threshold: 200ms
+  sql: SELECT * FROM users WHERE ...
+  rows_affected: 1000
+```
+
+### Connection Retry
+
+Automatic retry with exponential backoff for connection failures:
+
+```go
+// Use default retry settings (3 attempts, exponential backoff)
+config := database.DefaultConfig().
+    WithDriver("postgres").
+    WithDefaultRetry()
+
+// Custom retry configuration
+retryConfig := database.RetryConfig{
+    Enabled:       true,
+    MaxAttempts:   5,
+    InitialDelay:  100 * time.Millisecond,
+    MaxDelay:      10 * time.Second,
+    BackoffFactor: 2.0, // Delay doubles each retry
+}
+
+config := database.DefaultConfig().
+    WithDriver("postgres").
+    WithRetry(retryConfig)
+
+manager, err := database.NewManager(config, logger)
+// Will retry up to 5 times with exponential backoff
+```
+
+**Default Retry Settings:**
+- Max Attempts: 3
+- Initial Delay: 100ms
+- Max Delay: 5s
+- Backoff Factor: 2.0 (exponential)
+
+### Complete Observability Example
+
+```go
+config := database.DefaultConfig().
+    WithDriver("postgres").
+    WithHost("localhost").
+    WithDatabase("myapp").
+    WithSlowQueryLogging(200 * time.Millisecond).
+    WithDefaultRetry()
+
+manager, err := database.NewManager(config, logger)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Monitor health
+health := manager.DetailedHealthCheck()
+if !manager.IsHealthy() {
+    // Alert operations team
+}
+
+// Monitor pool usage
+stats := manager.Stats()
+if stats.WaitCount > 1000 {
+    log.Warn("High connection wait count - consider increasing pool size")
+}
+```
 
 ## Features Guide
 

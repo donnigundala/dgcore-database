@@ -13,6 +13,27 @@ import (
 
 // connect creates a database connection from the main config.
 func connect(config Config, log interface{}) (*gorm.DB, error) {
+	// Use retry logic if enabled
+	if config.Retry.Enabled {
+		// Convert Config to ConnectionConfig for retry
+		connConfig := ConnectionConfig{
+			Driver:    config.Driver,
+			Host:      config.Host,
+			Port:      config.Port,
+			Database:  config.Database,
+			Username:  config.Username,
+			Password:  config.Password,
+			FilePath:  config.FilePath,
+			Charset:   config.Charset,
+			Timezone:  config.Timezone,
+			ParseTime: config.ParseTime,
+			SSLMode:   config.SSLMode,
+			Schema:    config.Schema,
+		}
+		return connectWithRetry(connConfig, config.Retry, log)
+	}
+
+	// No retry - use direct connection
 	// Build DSN
 	dsn := buildDSN(config)
 

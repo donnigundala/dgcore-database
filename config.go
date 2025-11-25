@@ -37,6 +37,9 @@ type Config struct {
 	// Slow query logging
 	SlowQuery SlowQueryConfig
 
+	// Connection retry configuration
+	Retry RetryConfig
+
 	// Auto migration
 	AutoMigrate bool
 	Models      []interface{}
@@ -67,6 +70,15 @@ type SlowQueryConfig struct {
 	Enabled   bool          // Enable slow query logging
 	Threshold time.Duration // Queries slower than this are logged
 	LogStack  bool          // Include stack trace in logs
+}
+
+// RetryConfig holds configuration for connection retry logic.
+type RetryConfig struct {
+	Enabled       bool          // Enable connection retry
+	MaxAttempts   int           // Maximum number of retry attempts
+	InitialDelay  time.Duration // Initial delay before first retry
+	MaxDelay      time.Duration // Maximum delay between retries
+	BackoffFactor float64       // Exponential backoff multiplier
 }
 
 // ConnectionConfig holds configuration for a single database connection
@@ -225,6 +237,29 @@ func (c Config) WithSlowQueryLoggingAndStack(threshold time.Duration) Config {
 		Threshold: threshold,
 		LogStack:  true,
 	}
+	return c
+}
+
+// DefaultRetryConfig returns a sensible default retry configuration.
+func DefaultRetryConfig() RetryConfig {
+	return RetryConfig{
+		Enabled:       true,
+		MaxAttempts:   3,
+		InitialDelay:  100 * time.Millisecond,
+		MaxDelay:      5 * time.Second,
+		BackoffFactor: 2.0,
+	}
+}
+
+// WithRetry enables connection retry with the specified configuration.
+func (c Config) WithRetry(retry RetryConfig) Config {
+	c.Retry = retry
+	return c
+}
+
+// WithDefaultRetry enables connection retry with default settings.
+func (c Config) WithDefaultRetry() Config {
+	c.Retry = DefaultRetryConfig()
 	return c
 }
 
