@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"math/rand"
@@ -72,8 +73,16 @@ func (m *Manager) setupPrimaryConnection() error {
 		return err
 	}
 
-	sqlDB.SetMaxOpenConns(m.config.MaxOpenConns)
-	sqlDB.SetMaxIdleConns(m.config.MaxIdleConns)
+	// Special handling for SQLite :memory: databases
+	// They must use a single connection because each connection has its own database
+	if m.config.Driver == "sqlite" && (m.config.Database == ":memory:" || m.config.FilePath == ":memory:") {
+		sqlDB.SetMaxOpenConns(1)
+		sqlDB.SetMaxIdleConns(1)
+	} else {
+		sqlDB.SetMaxOpenConns(m.config.MaxOpenConns)
+		sqlDB.SetMaxIdleConns(m.config.MaxIdleConns)
+	}
+
 	sqlDB.SetConnMaxLifetime(m.config.ConnMaxLifetime)
 	sqlDB.SetConnMaxIdleTime(m.config.ConnMaxIdleTime)
 
@@ -329,7 +338,14 @@ func (m *Manager) Transaction(fn func(*gorm.DB) error) error {
 
 // AutoMigrate runs auto migration for given models.
 func (m *Manager) AutoMigrate(models ...interface{}) error {
-	return m.master.AutoMigrate(models...)
+	// Disable routing for migration to ensure it runs on master
+	// and doesn't get confused by read/write splitting
+	ctx := context.WithValue(context.Background(), "dgcore:skip_routing", true)
+	db := m.master.Session(&gorm.Session{
+		Context: ctx,
+	})
+
+	return db.AutoMigrate(models...)
 }
 
 // HealthCheck returns health status of all connections.

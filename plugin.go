@@ -45,14 +45,37 @@ func (p *ReadWritePlugin) Initialize(db *gorm.DB) error {
 
 // routeRead routes read queries to slave connections.
 func (p *ReadWritePlugin) routeRead(db *gorm.DB) {
-	// Skip if already in a transaction (transactions always use master)
-	if db.Statement.DB.Statement.ConnPool != nil {
+	// Skip if routing is disabled via context
+	if v, ok := db.Statement.Context.Value("dgcore:skip_routing").(bool); ok && v {
 		return
 	}
 
-	// Check if this is explicitly a write operation
+	// Skip if explicitly a write operation
 	if isWriteOperation(db) {
 		return
+	}
+
+	// Skip if in transaction (ConnPool is *sql.Tx)
+	if _, ok := db.Statement.ConnPool.(gorm.Tx); ok {
+		return
+	}
+
+	// Skip if query involves system tables (schema checks should go to master)
+	sql := db.Statement.SQL.String()
+
+	if sql == "" {
+		// If SQL is empty, check Vars (sometimes GORM hasn't built SQL yet)
+		// But for AutoMigrate/Migrator, it usually executes raw SQL
+	}
+	// Simple check for system tables
+	// SQLite: sqlite_master, sqlite_temp_master
+	// MySQL: information_schema
+	// Postgres: information_schema, pg_catalog
+	systemTables := []string{"sqlite_master", "sqlite_temp_master", "information_schema", "pg_catalog"}
+	for _, table := range systemTables {
+		if contains(sql, table) {
+			return
+		}
 	}
 
 	// Use slave for reads
@@ -64,9 +87,24 @@ func (p *ReadWritePlugin) routeRead(db *gorm.DB) {
 
 // routeWrite routes write queries to master connection.
 func (p *ReadWritePlugin) routeWrite(db *gorm.DB) {
-	// Writes always go to master
-	// This is a no-op since master is the default connection
-	// But we keep it for clarity and future enhancements
+	// Skip if routing is disabled via context
+	if v, ok := db.Statement.Context.Value("dgcore:skip_routing").(bool); ok && v {
+		return
+	}
+
+	// Skip if in transaction (ConnPool is *sql.Tx)
+	// If we are in a transaction, we assume we are already on the correct connection (Master)
+	// Changing ConnPool here would break the transaction
+	if _, ok := db.Statement.ConnPool.(gorm.Tx); ok {
+		return
+	}
+
+	// Always force master for writes
+	// This ensures that if a previous read operation in the same session
+	// switched the ConnPool to a slave, we switch it back to master.
+	if p.manager.master != nil {
+		db.Statement.ConnPool = p.manager.master.Statement.ConnPool
+	}
 }
 
 // isWriteOperation checks if the operation is a write.

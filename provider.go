@@ -35,28 +35,17 @@ func (p *ServiceProvider) Dependencies() []string {
 func (p *ServiceProvider) Register(app foundation.Application) error {
 	// Register database manager
 	app.Singleton("db", func() interface{} {
-		// Get logger if available
-		var logger interface{}
-		if loggerInstance, err := app.Make("logger"); err == nil {
-			logger = loggerInstance
-		}
-
-		manager, err := NewManager(p.config, logger)
+		// Note: Logger should be configured via Config.Logger field
+		// Calling app.Make("logger") here causes deadlock
+		manager, err := NewManager(p.config, nil)
 		if err != nil {
 			panic(fmt.Sprintf("failed to create database manager: %v", err))
 		}
 		return manager
 	})
 
-	// Register GORM instance for convenience
-	app.Singleton("gorm", func() interface{} {
-		managerInstance, err := app.Make("db")
-		if err != nil {
-			panic(fmt.Sprintf("failed to get database manager: %v", err))
-		}
-		manager := managerInstance.(*Manager)
-		return manager.DB()
-	})
+	// Note: We don't register "gorm" here because calling Make("db") inside
+	// a resolver causes deadlock. Users can get GORM via manager.DB() directly.
 
 	return nil
 }
