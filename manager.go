@@ -97,6 +97,14 @@ func (m *Manager) setupPrimaryConnection() error {
 		}
 	}
 
+	// Setup slow query logging if enabled
+	if m.config.SlowQuery.Enabled {
+		slowQueryPlugin := NewSlowQueryPlugin(m.config.SlowQuery, m.logger)
+		if err := m.db.Use(slowQueryPlugin); err != nil {
+			return fmt.Errorf("failed to register slow query plugin: %w", err)
+		}
+	}
+
 	return nil
 }
 

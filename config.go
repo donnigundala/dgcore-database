@@ -34,6 +34,9 @@ type Config struct {
 	LogLevel      string // silent, error, warn, info
 	SlowThreshold time.Duration
 
+	// Slow query logging
+	SlowQuery SlowQueryConfig
+
 	// Auto migration
 	AutoMigrate bool
 	Models      []interface{}
@@ -57,6 +60,13 @@ type Config struct {
 
 	// Default connection name
 	DefaultConnection string
+}
+
+// SlowQueryConfig holds configuration for slow query logging.
+type SlowQueryConfig struct {
+	Enabled   bool          // Enable slow query logging
+	Threshold time.Duration // Queries slower than this are logged
+	LogStack  bool          // Include stack trace in logs
 }
 
 // ConnectionConfig holds configuration for a single database connection
@@ -195,6 +205,26 @@ func (c Config) WithDefaultConnection(name string) Config {
 // WithSchema sets the database schema (PostgreSQL)
 func (c Config) WithSchema(schema string) Config {
 	c.Schema = schema
+	return c
+}
+
+// WithSlowQueryLogging enables slow query logging with the specified threshold.
+func (c Config) WithSlowQueryLogging(threshold time.Duration) Config {
+	c.SlowQuery = SlowQueryConfig{
+		Enabled:   true,
+		Threshold: threshold,
+		LogStack:  false,
+	}
+	return c
+}
+
+// WithSlowQueryLoggingAndStack enables slow query logging with stack traces.
+func (c Config) WithSlowQueryLoggingAndStack(threshold time.Duration) Config {
+	c.SlowQuery = SlowQueryConfig{
+		Enabled:   true,
+		Threshold: threshold,
+		LogStack:  true,
+	}
 	return c
 }
 
