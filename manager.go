@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -348,7 +349,117 @@ func (m *Manager) AutoMigrate(models ...interface{}) error {
 	return db.AutoMigrate(models...)
 }
 
+// PoolStats represents connection pool statistics.
+type PoolStats struct {
+	OpenConnections   int           // Number of established connections
+	InUse             int           // Number of connections currently in use
+	Idle              int           // Number of idle connections
+	WaitCount         int64         // Total number of connections waited for
+	WaitDuration      time.Duration // Total time blocked waiting for connections
+	MaxIdleClosed     int64         // Total number of connections closed due to SetMaxIdleConns
+	MaxLifetimeClosed int64         // Total number of connections closed due to SetConnMaxLifetime
+}
+
+// Stats returns connection pool statistics for the primary database connection.
+func (m *Manager) Stats() PoolStats {
+	sqlDB, err := m.db.DB()
+	if err != nil {
+		return PoolStats{}
+	}
+
+	stats := sqlDB.Stats()
+	return PoolStats{
+		OpenConnections:   stats.OpenConnections,
+		InUse:             stats.InUse,
+		Idle:              stats.Idle,
+		WaitCount:         stats.WaitCount,
+		WaitDuration:      stats.WaitDuration,
+		MaxIdleClosed:     stats.MaxIdleClosed,
+		MaxLifetimeClosed: stats.MaxLifetimeClosed,
+	}
+}
+
+// ConnectionStats returns connection pool statistics for a named connection.
+func (m *Manager) ConnectionStats(name string) PoolStats {
+	m.connMu.RLock()
+	conn, exists := m.connections[name]
+	m.connMu.RUnlock()
+
+	if !exists {
+		return PoolStats{}
+	}
+
+	sqlDB, err := conn.DB()
+	if err != nil {
+		return PoolStats{}
+	}
+
+	stats := sqlDB.Stats()
+	return PoolStats{
+		OpenConnections:   stats.OpenConnections,
+		InUse:             stats.InUse,
+		Idle:              stats.Idle,
+		WaitCount:         stats.WaitCount,
+		WaitDuration:      stats.WaitDuration,
+		MaxIdleClosed:     stats.MaxIdleClosed,
+		MaxLifetimeClosed: stats.MaxLifetimeClosed,
+	}
+}
+
+// AllStats returns connection pool statistics for all connections.
+func (m *Manager) AllStats() map[string]PoolStats {
+	result := make(map[string]PoolStats)
+
+	// Primary connection
+	result["primary"] = m.Stats()
+
+	// Master/Slave connections (if read/write splitting enabled)
+	if m.config.ReadWriteSplitting {
+		if m.master != nil {
+			sqlDB, err := m.master.DB()
+			if err == nil {
+				stats := sqlDB.Stats()
+				result["master"] = PoolStats{
+					OpenConnections:   stats.OpenConnections,
+					InUse:             stats.InUse,
+					Idle:              stats.Idle,
+					WaitCount:         stats.WaitCount,
+					WaitDuration:      stats.WaitDuration,
+					MaxIdleClosed:     stats.MaxIdleClosed,
+					MaxLifetimeClosed: stats.MaxLifetimeClosed,
+				}
+			}
+		}
+
+		for i, slave := range m.slaves {
+			sqlDB, err := slave.DB()
+			if err == nil {
+				stats := sqlDB.Stats()
+				result[fmt.Sprintf("slave_%d", i)] = PoolStats{
+					OpenConnections:   stats.OpenConnections,
+					InUse:             stats.InUse,
+					Idle:              stats.Idle,
+					WaitCount:         stats.WaitCount,
+					WaitDuration:      stats.WaitDuration,
+					MaxIdleClosed:     stats.MaxIdleClosed,
+					MaxLifetimeClosed: stats.MaxLifetimeClosed,
+				}
+			}
+		}
+	}
+
+	// Named connections
+	m.connMu.RLock()
+	for name := range m.connections {
+		result[name] = m.ConnectionStats(name)
+	}
+	m.connMu.RUnlock()
+
+	return result
+}
+
 // HealthCheck returns health status of all connections.
+
 func (m *Manager) HealthCheck() map[string]bool {
 	health := make(map[string]bool)
 
