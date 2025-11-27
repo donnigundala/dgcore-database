@@ -7,11 +7,11 @@ import (
 // SlowQueryPlugin is a GORM plugin that logs slow queries.
 type SlowQueryPlugin struct {
 	config SlowQueryConfig
-	logger interface{}
+	logger Logger
 }
 
 // NewSlowQueryPlugin creates a new slow query logging plugin.
-func NewSlowQueryPlugin(config SlowQueryConfig, logger interface{}) *SlowQueryPlugin {
+func NewSlowQueryPlugin(config SlowQueryConfig, logger Logger) *SlowQueryPlugin {
 	return &SlowQueryPlugin{
 		config: config,
 		logger: logger,

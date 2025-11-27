@@ -16,7 +16,7 @@ type Manager struct {
 	// Primary connection
 	db     *gorm.DB
 	config Config
-	logger interface{} // Can be *logging.Logger or any logger with Info/Warn/Error methods
+	logger Logger // Type-safe logger interface
 
 	// ========== Read/Write Splitting ==========
 	master *gorm.DB
@@ -31,8 +31,19 @@ type Manager struct {
 	connMu      sync.RWMutex
 }
 
-// NewManager creates a new database manager.
-func NewManager(config Config, logger interface{}) (*Manager, error) {
+// NewManager creates a new database manager with the given configuration and logger.
+// The logger must implement the Logger interface (Info and Warn methods).
+//
+// Example:
+//
+//	import "github.com/donnigundala/dg-core/logging"
+//
+//	logger := logging.Default()
+//	manager, err := database.NewManager(config, logger)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+func NewManager(config Config, logger Logger) (*Manager, error) {
 	manager := &Manager{
 		config:      config,
 		logger:      logger,
@@ -523,27 +534,13 @@ func (m *Manager) ping(db *gorm.DB) error {
 // ========== Logger Helpers ==========
 
 func (m *Manager) logInfo(msg string, args ...interface{}) {
-	if m.logger == nil {
-		return
-	}
-	// Try to call Info method if available
-	type infoLogger interface {
-		Info(string, ...interface{})
-	}
-	if l, ok := m.logger.(infoLogger); ok {
-		l.Info(msg, args...)
+	if m.logger != nil {
+		m.logger.Info(msg, args...)
 	}
 }
 
 func (m *Manager) logWarn(msg string, args ...interface{}) {
-	if m.logger == nil {
-		return
-	}
-	// Try to call Warn method if available
-	type warnLogger interface {
-		Warn(string, ...interface{})
-	}
-	if l, ok := m.logger.(warnLogger); ok {
-		l.Warn(msg, args...)
+	if m.logger != nil {
+		m.logger.Warn(msg, args...)
 	}
 }

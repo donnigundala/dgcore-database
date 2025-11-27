@@ -12,7 +12,7 @@ import (
 )
 
 // connect creates a database connection from the main config.
-func connect(config Config, log interface{}) (*gorm.DB, error) {
+func connect(config Config, log Logger) (*gorm.DB, error) {
 	// Use retry logic if enabled
 	if config.Retry.Enabled {
 		// Convert Config to ConnectionConfig for retry
@@ -65,7 +65,7 @@ func connect(config Config, log interface{}) (*gorm.DB, error) {
 }
 
 // connectWithConfig creates a connection from ConnectionConfig.
-func connectWithConfig(config ConnectionConfig, log interface{}) (*gorm.DB, error) {
+func connectWithConfig(config ConnectionConfig, log Logger) (*gorm.DB, error) {
 	// Build DSN
 	dsn := buildDSNFromConnectionConfig(config)
 

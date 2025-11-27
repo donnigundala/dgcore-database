@@ -137,10 +137,11 @@ func TestServiceProvider_Boot_ConnectionFailure(t *testing.T) {
 	err := provider.Register(app)
 	require.NoError(t, err)
 
-	// Boot should panic when trying to resolve db with invalid connection
-	assert.Panics(t, func() {
-		_ = provider.Boot(app)
-	}, "Boot should panic with invalid connection")
+	// Boot should fail when trying to connect with invalid configuration
+	err = provider.Boot(app)
+	assert.Error(t, err, "Boot should fail with invalid connection")
+	// Error from panic recovery contains "panic while resolving"
+	assert.Contains(t, err.Error(), "failed to", "Error should mention failure")
 }
 
 // TestServiceProvider_Boot_WithLogger tests boot with logger

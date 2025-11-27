@@ -8,7 +8,7 @@ import (
 )
 
 // connectWithRetry attempts to connect to the database with retry logic.
-func connectWithRetry(config ConnectionConfig, retryConfig RetryConfig, logger interface{}) (*gorm.DB, error) {
+func connectWithRetry(config ConnectionConfig, retryConfig RetryConfig, logger Logger) (*gorm.DB, error) {
 	if !retryConfig.Enabled {
 		// Retry disabled, use normal connection
 		return connectWithConfig(config, logger)
