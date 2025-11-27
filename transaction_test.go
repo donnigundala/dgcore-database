@@ -299,3 +299,101 @@ func TestBeginCommitRollback(t *testing.T) {
 		t.Errorf("Expected 1 order after rollback, got %d", count)
 	}
 }
+
+func TestManager_Transaction_Nested(t *testing.T) {
+	dbFile := "test_tx_nested.db"
+	defer func() { _ = os.Remove(dbFile) }()
+
+	config := Config{
+		Driver:   "sqlite",
+		FilePath: dbFile,
+	}
+
+	manager, err := NewManager(config, nil)
+	if err != nil {
+		t.Fatalf("Failed to create manager: %v", err)
+	}
+	defer manager.Close()
+
+	if err := manager.AutoMigrate(&TestOrder{}); err != nil {
+		t.Fatalf("AutoMigrate failed: %v", err)
+	}
+
+	// Nested transaction with rollback of inner
+	err = manager.WithTx(func(tx *gorm.DB) error {
+		// Outer transaction
+		if err := tx.Create(&TestOrder{Amount: 100}).Error; err != nil {
+			return err
+		}
+
+		// Inner transaction (Savepoint)
+		// We ignore error from inner transaction to continue outer transaction
+		_ = WithTransaction(tx, func(tx2 *gorm.DB) error {
+			if err := tx2.Create(&TestOrder{Amount: 200}).Error; err != nil {
+				return err
+			}
+			return gorm.ErrInvalidTransaction // Trigger rollback of inner
+		})
+
+		return nil // Commit outer
+	})
+
+	if err != nil {
+		t.Errorf("Transaction failed: %v", err)
+	}
+
+	// Verify: 100 should exist, 200 should NOT exist
+	var orders []TestOrder
+	manager.DB().Order("amount").Find(&orders)
+
+	if len(orders) != 1 {
+		t.Errorf("Expected 1 order, got %d", len(orders))
+	}
+	if len(orders) > 0 && orders[0].Amount != 100 {
+		t.Errorf("Expected order amount 100, got %f", orders[0].Amount)
+	}
+}
+
+func TestManager_Transaction_NestedCommit(t *testing.T) {
+	dbFile := "test_tx_nested_commit.db"
+	defer func() { _ = os.Remove(dbFile) }()
+
+	config := Config{
+		Driver:   "sqlite",
+		FilePath: dbFile,
+	}
+
+	manager, err := NewManager(config, nil)
+	if err != nil {
+		t.Fatalf("Failed to create manager: %v", err)
+	}
+	defer manager.Close()
+
+	if err := manager.AutoMigrate(&TestOrder{}); err != nil {
+		t.Fatalf("AutoMigrate failed: %v", err)
+	}
+
+	// Nested transaction with commit of both
+	err = manager.WithTx(func(tx *gorm.DB) error {
+		// Outer transaction
+		if err := tx.Create(&TestOrder{Amount: 100}).Error; err != nil {
+			return err
+		}
+
+		// Inner transaction (Savepoint)
+		return WithTransaction(tx, func(tx2 *gorm.DB) error {
+			return tx2.Create(&TestOrder{Amount: 200}).Error
+		})
+	})
+
+	if err != nil {
+		t.Errorf("Transaction failed: %v", err)
+	}
+
+	// Verify: Both should exist
+	var count int64
+	manager.DB().Model(&TestOrder{}).Count(&count)
+	if count != 2 {
+		t.Errorf("Expected 2 orders, got %d", count)
+	}
+}

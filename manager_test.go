@@ -1,7 +1,9 @@
 package database
 
 import (
+	"fmt"
 	"os"
+	"sync"
 	"testing"
 
 	"gorm.io/gorm"
@@ -293,5 +295,113 @@ func TestManager_Close(t *testing.T) {
 	// Close should not error
 	if err := manager.Close(); err != nil {
 		t.Errorf("Close failed: %v", err)
+	}
+}
+
+func TestManager_ConcurrentAccess(t *testing.T) {
+	config := Config{
+		Driver:   "sqlite",
+		FilePath: ":memory:",
+	}
+
+	manager, err := NewManager(config, nil)
+	if err != nil {
+		t.Fatalf("Failed to create manager: %v", err)
+	}
+	defer manager.Close()
+
+	var wg sync.WaitGroup
+	workers := 20
+
+	// Concurrent GetConnection
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			// Should not panic or race
+			_ = manager.Connection("default")
+			_ = manager.HasConnection("default")
+		}()
+	}
+
+	// Concurrent Add/Remove Connection
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			name := fmt.Sprintf("conn_%d", id)
+			connConfig := ConnectionConfig{
+				Driver:   "sqlite",
+				FilePath: ":memory:",
+			}
+
+			// Add
+			if err := manager.AddConnection(name, connConfig); err != nil {
+				t.Errorf("Failed to add connection %s: %v", name, err)
+				return
+			}
+
+			// Check
+			if !manager.HasConnection(name) {
+				t.Errorf("Connection %s should exist", name)
+			}
+
+			// Remove
+			if err := manager.RemoveConnection(name); err != nil {
+				t.Errorf("Failed to remove connection %s: %v", name, err)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+}
+
+func TestManager_ConcurrentTransactions(t *testing.T) {
+	dbFile := "test_concurrent_tx.db"
+	defer func() { _ = os.Remove(dbFile) }()
+
+	config := Config{
+		Driver:   "sqlite",
+		FilePath: dbFile,
+	}
+
+	manager, err := NewManager(config, nil)
+	if err != nil {
+		t.Fatalf("Failed to create manager: %v", err)
+	}
+	defer manager.Close()
+
+	// Migrate
+	if err := manager.AutoMigrate(&TestUser{}); err != nil {
+		t.Fatalf("AutoMigrate failed: %v", err)
+	}
+
+	var wg sync.WaitGroup
+	workers := 10
+
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			err := manager.WithTx(func(tx *gorm.DB) error {
+				user := TestUser{
+					Name:  fmt.Sprintf("User_%d", id),
+					Email: fmt.Sprintf("user%d@example.com", id),
+				}
+				return tx.Create(&user).Error
+			})
+			if err != nil {
+				t.Errorf("Transaction failed for worker %d: %v", id, err)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Verify count
+	var count int64
+	manager.DB().Model(&TestUser{}).Count(&count)
+	if count != int64(workers) {
+		t.Errorf("Expected %d users, got %d", workers, count)
 	}
 }

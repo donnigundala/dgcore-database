@@ -1,8 +1,10 @@
 package database
 
 import (
+	"context"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestBuildMySQLDSN(t *testing.T) {
@@ -199,5 +201,32 @@ func TestConnect_UnsupportedDriver(t *testing.T) {
 
 	if !strings.Contains(err.Error(), "unsupported driver") {
 		t.Errorf("Expected 'unsupported driver' error, got: %v", err)
+	}
+}
+
+func TestConnection_ContextCancellation(t *testing.T) {
+	config := Config{
+		Driver:   "sqlite",
+		FilePath: ":memory:",
+	}
+
+	db, err := connect(config, nil)
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	// Give a small moment for cancellation to propagate if needed, though cancel() is usually immediate
+	time.Sleep(1 * time.Millisecond)
+
+	err = db.WithContext(ctx).Exec("SELECT 1").Error
+
+	if err == nil {
+		t.Error("Expected error due to context cancellation")
+	}
+	if err != context.Canceled {
+		t.Errorf("Expected context.Canceled, got %v", err)
 	}
 }
