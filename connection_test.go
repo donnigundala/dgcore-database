@@ -115,7 +115,7 @@ func TestBuildDSNFromConnectionConfig_MySQL(t *testing.T) {
 		Password: "pass",
 	}
 
-	dsn := buildDSNFromConnectionConfig(config)
+	dsn := buildDSN(config)
 
 	if !strings.Contains(dsn, "user:pass@tcp(db.example.com:3306)/mydb") {
 		t.Errorf("Unexpected DSN: %s", dsn)
@@ -132,7 +132,7 @@ func TestBuildDSNFromConnectionConfig_Postgres(t *testing.T) {
 		Password: "pgpass",
 	}
 
-	dsn := buildDSNFromConnectionConfig(config)
+	dsn := buildDSN(config)
 
 	if !strings.Contains(dsn, "host=pg.example.com") {
 		t.Error("Expected host in DSN")

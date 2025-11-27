@@ -52,7 +52,7 @@ func TestPostgresSchemaFromConnectionConfig(t *testing.T) {
 		Schema:   "tenant_schema",
 	}
 
-	dsn := buildPostgresDSNFromConn(config)
+	dsn := buildPostgresDSN(config)
 
 	if !strings.Contains(dsn, "search_path=tenant_schema") {
 		t.Errorf("Expected DSN to contain search_path=tenant_schema, got: %s", dsn)

@@ -67,7 +67,7 @@ func connect(config Config, log Logger) (*gorm.DB, error) {
 // connectWithConfig creates a connection from ConnectionConfig.
 func connectWithConfig(config ConnectionConfig, log Logger) (*gorm.DB, error) {
 	// Build DSN
-	dsn := buildDSNFromConnectionConfig(config)
+	dsn := buildDSN(config)
 
 	// Select driver
 	var dialector gorm.Dialector
@@ -110,140 +110,6 @@ func connectWithConfig(config ConnectionConfig, log Logger) (*gorm.DB, error) {
 	}
 
 	return db, nil
-}
-
-// buildDSN builds a DSN string from Config.
-func buildDSN(config Config) string {
-	switch config.Driver {
-	case "mysql":
-		return buildMySQLDSN(config)
-	case "postgres":
-		return buildPostgresDSN(config)
-	case "sqlite":
-		return config.FilePath
-	default:
-		return ""
-	}
-}
-
-// buildDSNFromConnectionConfig builds a DSN from ConnectionConfig.
-func buildDSNFromConnectionConfig(config ConnectionConfig) string {
-	switch config.Driver {
-	case "mysql":
-		return buildMySQLDSNFromConn(config)
-	case "postgres":
-		return buildPostgresDSNFromConn(config)
-	case "sqlite":
-		return config.FilePath
-	default:
-		return ""
-	}
-}
-
-// buildMySQLDSN builds MySQL DSN.
-func buildMySQLDSN(config Config) string {
-	charset := config.Charset
-	if charset == "" {
-		charset = "utf8mb4"
-	}
-
-	parseTime := "True"
-	if !config.ParseTime {
-		parseTime = "False"
-	}
-
-	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=%s&loc=Local",
-		config.Username,
-		config.Password,
-		config.Host,
-		config.Port,
-		config.Database,
-		charset,
-		parseTime,
-	)
-}
-
-// buildMySQLDSNFromConn builds MySQL DSN from ConnectionConfig.
-func buildMySQLDSNFromConn(config ConnectionConfig) string {
-	charset := config.Charset
-	if charset == "" {
-		charset = "utf8mb4"
-	}
-
-	parseTime := "True"
-	if !config.ParseTime {
-		parseTime = "False"
-	}
-
-	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=%s&loc=Local",
-		config.Username,
-		config.Password,
-		config.Host,
-		config.Port,
-		config.Database,
-		charset,
-		parseTime,
-	)
-}
-
-// buildPostgresDSN builds PostgreSQL DSN.
-func buildPostgresDSN(config Config) string {
-	sslMode := config.SSLMode
-	if sslMode == "" {
-		sslMode = "disable"
-	}
-
-	timezone := config.Timezone
-	if timezone == "" {
-		timezone = "UTC"
-	}
-
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
-		config.Host,
-		config.Username,
-		config.Password,
-		config.Database,
-		config.Port,
-		sslMode,
-		timezone,
-	)
-
-	// Add schema (search_path) if specified
-	if config.Schema != "" {
-		dsn += fmt.Sprintf(" search_path=%s", config.Schema)
-	}
-
-	return dsn
-}
-
-// buildPostgresDSNFromConn builds PostgreSQL DSN from ConnectionConfig.
-func buildPostgresDSNFromConn(config ConnectionConfig) string {
-	sslMode := config.SSLMode
-	if sslMode == "" {
-		sslMode = "disable"
-	}
-
-	timezone := config.Timezone
-	if timezone == "" {
-		timezone = "UTC"
-	}
-
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
-		config.Host,
-		config.Username,
-		config.Password,
-		config.Database,
-		config.Port,
-		sslMode,
-		timezone,
-	)
-
-	// Add schema (search_path) if specified
-	if config.Schema != "" {
-		dsn += fmt.Sprintf(" search_path=%s", config.Schema)
-	}
-
-	return dsn
 }
 
 // getLogger returns a GORM logger based on log level.
