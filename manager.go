@@ -44,6 +44,11 @@ type Manager struct {
 //	    log.Fatal(err)
 //	}
 func NewManager(config Config, logger Logger) (*Manager, error) {
+	// Validate configuration first
+	if err := config.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid configuration: %w", err)
+	}
+
 	manager := &Manager{
 		config:      config,
 		logger:      logger,

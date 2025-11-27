@@ -1,6 +1,9 @@
 package database
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // Config holds the database configuration
 type Config struct {
@@ -268,4 +271,21 @@ func (c Config) WithMaxConnections(maxOpen, maxIdle int) Config {
 	c.MaxOpenConns = maxOpen
 	c.MaxIdleConns = maxIdle
 	return c
+}
+
+// Validate validates the configuration.
+func (c Config) Validate() error {
+	if c.Driver == "" {
+		return fmt.Errorf("database driver is required")
+	}
+
+	if c.Driver != "sqlite" && c.Host == "" {
+		return fmt.Errorf("database host is required for driver %s", c.Driver)
+	}
+
+	if c.Driver == "sqlite" && c.FilePath == "" && c.Database == "" {
+		return fmt.Errorf("database file path or database name is required for sqlite")
+	}
+
+	return nil
 }
