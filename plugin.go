@@ -46,7 +46,7 @@ func (p *ReadWritePlugin) Initialize(db *gorm.DB) error {
 // routeRead routes read queries to slave connections.
 func (p *ReadWritePlugin) routeRead(db *gorm.DB) {
 	// Skip if routing is disabled via context
-	if v, ok := db.Statement.Context.Value("dgcore:skip_routing").(bool); ok && v {
+	if v, ok := db.Statement.Context.Value(skipRoutingKey).(bool); ok && v {
 		return
 	}
 
@@ -88,7 +88,7 @@ func (p *ReadWritePlugin) routeRead(db *gorm.DB) {
 // routeWrite routes write queries to master connection.
 func (p *ReadWritePlugin) routeWrite(db *gorm.DB) {
 	// Skip if routing is disabled via context
-	if v, ok := db.Statement.Context.Value("dgcore:skip_routing").(bool); ok && v {
+	if v, ok := db.Statement.Context.Value(skipRoutingKey).(bool); ok && v {
 		return
 	}
 

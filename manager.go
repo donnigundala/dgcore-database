@@ -11,6 +11,12 @@ import (
 	"gorm.io/gorm"
 )
 
+// contextKey is a custom type for context keys to avoid collisions.
+type contextKey string
+
+// skipRoutingKey is the context key for skipping automatic routing.
+const skipRoutingKey contextKey = "dgcore:skip_routing"
+
 // Manager manages database connections with support for read/write splitting and multi-connection.
 type Manager struct {
 	// Primary connection
@@ -199,23 +205,29 @@ func (m *Manager) Close() error {
 	if m.db != nil {
 		sqlDB, _ := m.db.DB()
 		if sqlDB != nil {
-			sqlDB.Close()
+			if err := sqlDB.Close(); err != nil {
+				m.logWarn("Failed to close primary connection", "error", err)
+			}
 		}
 	}
 
 	// Close slaves
-	for _, slave := range m.slaves {
+	for i, slave := range m.slaves {
 		if sqlDB, err := slave.DB(); err == nil {
-			sqlDB.Close()
+			if err := sqlDB.Close(); err != nil {
+				m.logWarn("Failed to close slave connection", "index", i, "error", err)
+			}
 		}
 	}
 
 	// Close named connections
 	m.connMu.RLock()
 	defer m.connMu.RUnlock()
-	for _, conn := range m.connections {
+	for name, conn := range m.connections {
 		if sqlDB, err := conn.DB(); err == nil {
-			sqlDB.Close()
+			if err := sqlDB.Close(); err != nil {
+				m.logWarn("Failed to close named connection", "name", name, "error", err)
+			}
 		}
 	}
 
@@ -344,7 +356,9 @@ func (m *Manager) RemoveConnection(name string) error {
 
 	if conn, exists := m.connections[name]; exists {
 		if sqlDB, err := conn.DB(); err == nil {
-			sqlDB.Close()
+			if err := sqlDB.Close(); err != nil {
+				m.logWarn("Failed to close connection during removal", "name", name, "error", err)
+			}
 		}
 		delete(m.connections, name)
 		m.logInfo("Connection removed", "name", name)
@@ -365,7 +379,7 @@ func (m *Manager) Transaction(fn func(*gorm.DB) error) error {
 func (m *Manager) AutoMigrate(models ...interface{}) error {
 	// Disable routing for migration to ensure it runs on master
 	// and doesn't get confused by read/write splitting
-	ctx := context.WithValue(context.Background(), "dgcore:skip_routing", true)
+	ctx := context.WithValue(context.Background(), skipRoutingKey, true)
 	db := m.master.Session(&gorm.Session{
 		Context: ctx,
 	})
